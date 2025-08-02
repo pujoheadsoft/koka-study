@@ -179,3 +179,136 @@ fun raise-maybe(action : () -> <raise|e> a) : e maybe<a>
 
 pub fun example-div42()
   (raise-maybe { safe-divide(1, 0) }).default(52)
+
+/* 状態エフェクト */
+effect state<a>
+  fun get() : a
+  fun set(x : a) : ()
+
+fun sumdown(sum : int = 0) : <state<int>, div> int
+  val i = get()
+  if i <= 0 then
+    sum
+  else
+    set(i - 1)
+    sumdown(sum + i)
+
+/* 一般的な状態ハンドラ */
+fun state(init : a, action : () -> <state<a>, div|e> b) : <div|e> (b, a)
+  var st := init
+  with handler
+    return(x) (x, st)
+    fun get() st
+    fun set(i) st := i
+  action()
+
+pub fun example-sumdown()
+  state(10)
+    sumdown()
+
+/* 一般的な状態ハンドラ2 */
+fun state2(init : a, action : () -> <state<a>, div|e> b) : <div|e> (b, a)
+  var st := init
+  // 単一の`return`操作のみを含むハンドラ
+  // このハンドラはエフェクトを全くハンドリングせず、関数の最終的な結果を変換するだけ
+  with return(x) (x, st)
+  with handler
+    fun get() st
+    fun set(i) st := i
+  action()
+
+pub fun example-sumdown2()
+  state2(10)
+    sumdown()
+
+// ---------------------------------
+
+// ---------------------------------
+// ハンドラの組み合わせ
+
+fun no-odds() : <raise, state<int>> int
+  val i = get()
+  if i.is-odd then raise("no odds")
+  else
+    set(i / 2)
+    i
+
+// stateハンドラとraiseハンドラを組み合わせる
+fun state-raise(init) : div (maybe<int>, int)
+  with state(init)
+  with raise-maybe
+  no-odds()
+
+// 別の順序で組み合わせる
+fun raise-state(init) : div maybe<(int, int)>
+  with raise-maybe
+  with state(init)
+  no-odds()
+
+pub fun example-state-raise()
+  state-raise(10) // (Just(10),5)
+
+pub fun example-state-raise2()
+  state-raise(9) // (Nothing,9)
+
+pub fun example-state-raise3()
+  state-raise(0) // (Just(0),0)
+
+pub fun example-raise-state()
+  raise-state(10) // Just((10,5))
+
+pub fun example-raise-state2()
+  raise-state(9) // Nothing
+
+pub fun example-raise-state3()
+  raise-state(0) // Just((0,0))
+
+// ---------------------------------
+
+// ---------------------------------
+// エフェクトのマスキング
+
+
+fun mask-emit()
+  // emit操作に対するネストされたハンドラ
+  with fun emit(msg) println("outer: " ++ msg)
+  with fun emit(msg) println("inner: " ++ msg)
+  emit("hi")
+  mask<emit>
+    emit("there")
+
+/*
+  上記を実行すると次のように表示される
+  inner: hi
+  outer: there
+*/
+pub fun test-mask-emit()
+  mask-emit()
+
+// ---------------------------------
+
+// ---------------------------------
+// 複数回の再開
+
+effect ctl choice() : bool
+
+fun xor() : choice bool
+  val p = choice()
+  val q = choice()
+  if p then !q else q
+
+fun choice-rundom(action : () -> <choice, random|e> a) : <random|e> a
+  with fun choice() random-bool()
+  action() // ランダムにTrue, Falseを返す
+
+pub fun example-choice-random()
+  choice-rundom(xor)
+
+fun choice-all(action : () -> <choice|e> a) : e list<a>
+  with handler
+    return(x) [x]
+    ctl choice() resume(False) ++ resume(True)
+  action()
+
+pub fun example-choice-all()
+  choice-all(xor) // [False,True,True,False]
