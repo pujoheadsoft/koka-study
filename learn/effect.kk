@@ -1,3 +1,7 @@
+/**
+ * 返り値の型のエフェクトの話
+ * エフェクトの宣言とかハンドリングは、handler.kkに書いてある
+ */
 module learn/effect
 
 import std/num/random
@@ -14,8 +18,9 @@ fun square3(x : int) : div int { x * square3(x) }
 // exn は例外が発生する可能性がある場合
 fun square4(x : int) : exn int { throw("oops"); x * x }
 
-
-fun combine-effects()
+// エフェクトを列挙してみた pureは pub alias pure = <exn,div> と定義されている
+fun combine-effects() : <pure,ndet> a
   val i = srandom-int() // 非決定的
   throw("oops")         // 例外
   combine-effects()     // 発散
+
