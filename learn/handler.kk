@@ -132,6 +132,12 @@ fun emit-console(action : () -> <console/console,emit|e> a) : <console/console|e
   with fun emit(msg) println(msg)
   action()
 
+// handler {} と handle (action) は同じ意味
+// handle(action) { ... } ≡ (handler { ... } )(action)
+fun emit-console2(action)
+  handle (action)
+    emit(msg) println(msg)
+
 // 汎用的なハンドラを使わない版
 fun ehello-console() : console ()
   with fun emit(msg) println(msg)
