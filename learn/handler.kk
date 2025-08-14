@@ -138,6 +138,12 @@ fun emit-console2(action)
   handle (action)
     emit(msg) println(msg)
 
+fun emit-console3(action)
+  (handler {
+    emit(msg)
+      println(msg)
+  })(action)
+
 // 汎用的なハンドラを使わない版
 fun ehello-console() : console ()
   with fun emit(msg) println(msg)
