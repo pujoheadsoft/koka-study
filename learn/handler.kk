@@ -3,6 +3,42 @@ module learn/handler
 import std/num/random
 
 /**
+ handler について
+ 
+ handlerはKokaの言語構文であり、handlerという関数が(Kokaのコードとして)定義されているわけではない。
+ 
+ 関数としては
+ handler { <operations> } : (() -> <eff|e> a) -> <e> a  
+ のような関数として理解できる。
+
+ どういうことかというと、
+ handler { <operations> }
+ という関数は、(() -> <eff|e> a) -> <e> a という関数を返す。
+ つまり関数を生成する関数ということ。
+
+ () -> <eff|e> a
+ は引数なしで、何らかのエフェクトが列挙された型を返す関数。
+ エフェクトを返す無名関数とかを渡せるということだね。
+
+ そして <e> a は <eff|e> a の eff が除去されたもの。
+
+ つまり、handler { <operations> }が返す関数は、
+ エフェクトを生成するような関数が渡されたら、エフェクトを除去して返す、というような関数である。
+
+ <operations>として使えるのは
+ - val
+ - fun
+ - ctl
+ - return
+ の4つ
+
+ これらのうち return 以外をつかって
+
+https://deepwiki.com/search/handle_925418ec-7567-4ff1-a281-9354f041c944
+*/
+
+
+/**
  * エフェクト名と操作名が同じ、かつ操作が一つの場合、このように書ける
  * effect ctl raise( msg : string ) : a
  */
@@ -17,12 +53,22 @@ fun safe-divide(x : int, y : int) : raise int
   else
     x / y
 
+/*
+ with と handler で handlerを定義する。
+ with 文は、それに続くすべての文を匿名関数ブロックに入れ、それを最後のパラメーターとして渡すものであった。
+ ということは with handler xxx と書いた場合、xxxの部分を匿名関数として handlerのパラメーターとして渡すことになる。
+ なので↓のように書ける。だから便利。
+ */
 fun raise-const() : int
   with handler
     ctl raise(msg) 42
   8 + safe-divide(8, 0)
 
-// 上記の構文糖
+/*
+ 上記の構文糖
+ これを脱糖すると上記のようになる。
+ raiseのような単一の操作の場合、構文的な便宜上 handler を省略してこのように書ける。
+ */
 fun raise-const2() : int
   with ctl raise(msg) 42
   8 + safe-divide(8, 0)
@@ -72,12 +118,15 @@ fun ask-once() : int
 
 pub fun test-ask-once()
   ask-once().println
+
 // ------------------------------------
 // 末尾再開操作
 
-
-// 末尾に再開がある場合、このように書ける
-// funとして宣言した方が一般的なctl操作より効率的らしい
+/**
+ 末尾に再開がある場合、resume を使わずに書ける。
+ この場合、ctl ではなく fun で定義する。
+ さらに fun として宣言した方が一般的な ctl 操作より効率的らしい
+ */
 fun ask-const2() : int
   with fun ask() 21
   add-twice()
@@ -89,6 +138,28 @@ fun ask-const2-desugaring() : int
     resume( f() )
   }
   add-twice()
+
+// 上記を更にhandlerの省略をやめたもの
+fun ask-const3-desugaring() : int
+  with handler {
+    ctl ask() {
+      val f = fn() { 21 }
+      resume( f() )
+    }
+  }
+  add-twice()
+
+/**
+ 上記をさらに with を使うのをやめたもの
+ handlerは (handler { ... } )(action) というように使う
+ */
+fun ask-const4-desugaring() : int
+  (handler {
+    ctl ask() {
+      val f = fn() { 21 }
+      resume( f() )
+    }
+  })(add-twice)
 
 // 任意の操作が末尾再開的でなければならないことを宣言することもできる
 effect ask2<a>
@@ -113,6 +184,12 @@ fun pretty-thin(d : string) : string
   with val width = 6
   pretty(d)
 
+// この val は handler のブロックの中で使えるもの
+fun pretty-thin2(d : string) : string
+  with handler
+    val width = 6
+  pretty(d)
+
 pub fun test-pretty-thin()
   pretty-thin("This is a long line that should be truncated.").println
 
@@ -132,17 +209,32 @@ fun emit-console(action : () -> <console/console,emit|e> a) : <console/console|e
   with fun emit(msg) println(msg)
   action()
 
-// handler {} と handle (action) は同じ意味
-// handle(action) { ... } ≡ (handler { ... } )(action)
+/*
+ 汎用的なハンドラその2
+ withを使わないでhandleで書いた版
+*/
 fun emit-console2(action)
   handle (action)
     emit(msg) println(msg)
 
+// handler {} と handle (action) は同じ意味
+// handle(action) { ... } ≡ (handler { ... } )(action)
+
+// ↑の同じ意味を実際に書いてみたもの
 fun emit-console3(action)
   (handler {
+    emit(msg) {
+      println(msg)
+    }
+  })(action)
+
+// handlerを使うならwithとあわせて使った方がいいね
+fun emit-console4(action)
+  with handler
     emit(msg)
       println(msg)
-  })(action)
+  action()
+
 
 // 汎用的なハンドラを使わない版
 fun ehello-console() : console ()
