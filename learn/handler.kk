@@ -218,9 +218,9 @@ fun emit-console(action : () -> <console/console,emit|e> a) : <console/console|e
  汎用的なハンドラその2
  withを使わないでhandleで書いた版
 */
-fun emit-console2(action)
+fun test-emit-console2(action)
   handle (action)
-    emit(msg) println(msg)
+    fun emit(msg) println(msg)
 
 // handler {} と handle (action) は同じ意味
 // handle(action) { ... } ≡ (handler { ... } )(action)
@@ -228,7 +228,7 @@ fun emit-console2(action)
 // ↑の同じ意味を実際に書いてみたもの
 fun emit-console3(action)
   (handler {
-    emit(msg) {
+    fun emit(msg) {
       println(msg)
     }
   })(action)
@@ -236,7 +236,7 @@ fun emit-console3(action)
 // handlerが関数を生成しているということをわかりやすくするために変数に入れてみたもの
 fun emit-console4(action)
   val h = handler {
-    emit(msg) {
+    fun emit(msg) {
       println(msg)
     }
   }
@@ -245,7 +245,7 @@ fun emit-console4(action)
 // handlerを使うならwithとあわせて使った方がいいね
 fun emit-console5(action)
   with handler
-    emit(msg)
+    fun emit(msg)
       println(msg)
   action()
 
@@ -427,6 +427,53 @@ fun choice-all(action : () -> <choice|e> a) : e list<a>
     return(x) [x]
     ctl choice() resume(False) ++ resume(True)
   action()
-
+  
 pub fun example-choice-all()
   choice-all(xor) // [False,True,True,False]
+
+// -----------------------
+// 複数のハンドラを使う例
+
+// valでハンドラを定義
+val ask-handler = handler
+    fun ask() "Hello World"
+
+val emit-handler = handler
+    fun emit(msg) println("Emitted: " ++ msg)
+
+// ハンドラを返す関数を定義
+fun gen-ask-handler() : ((() -> <ask<string>|e> a) -> e a)
+  handler
+    fun ask() "Hello World"
+
+fun gen-emit-handler() : ((() -> <console, emit|e> a) -> <console|e> a)
+  handler
+    fun emit(msg) println("Emitted: " ++ msg)
+
+// 二つのエフェクトを使う関数
+fun ask-emit()
+  val v = ask()
+  emit(v)
+
+/**
+ askとemitの両方のハンドラを使う例
+ valで定義したハンドラを使う場合は素直にそのまま使える。
+ */
+pub fun example-ask-emit()
+  with ask-handler
+  with emit-handler
+  ask-emit()
+
+/**
+ askとemitの両方のハンドラを使う例その2
+ ハンドラを返す関数を使う場合は、一度変数に代入してから使う。
+ 直接 with get-ask-handler() のようには書けない。
+ なぜならば with は 直接handler関数を受け取ることを期待しているから。
+ 動的にハンドラーを生成する場合はこちらを使うことになりそう。
+ */
+pub fun example-ask-emit2()
+  val handler1 = gen-ask-handler()  
+  val handler2 = gen-emit-handler()  
+  with handler1  
+  with handler2
+  ask-emit()
