@@ -32,11 +32,16 @@ import std/num/random
  - return
  の4つ
 
- これらのうち return 以外をつかって
+ これらのうち return 以外をつかって、eff に対応したエフェクトをハンドリングする処理を書く。
 
-https://deepwiki.com/search/handle_925418ec-7567-4ff1-a281-9354f041c944
+ ここまで理解すると、以下のコードの意味がわかる。
+ ```
+ with handler
+   fun xxx ...
+   ctl yyy ...
+ xxxやyyyを使うアクションを返す関数
+ ```
 */
-
 
 /**
  * エフェクト名と操作名が同じ、かつ操作が一つの場合、このように書ける
@@ -228,8 +233,17 @@ fun emit-console3(action)
     }
   })(action)
 
-// handlerを使うならwithとあわせて使った方がいいね
+// handlerが関数を生成しているということをわかりやすくするために変数に入れてみたもの
 fun emit-console4(action)
+  val h = handler {
+    emit(msg) {
+      println(msg)
+    }
+  }
+  h(action)
+
+// handlerを使うならwithとあわせて使った方がいいね
+fun emit-console5(action)
   with handler
     emit(msg)
       println(msg)
