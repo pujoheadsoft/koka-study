@@ -41,6 +41,15 @@ import std/num/random
    ctl yyy ...
  xxxやyyyを使うアクションを返す関数
  ```
+
+ また、handlerは合成することができる。
+
+ ドキュメントによると、効果ハンドラが自由に合成できる理由は以下である。
+ 1.効果ハンドラは最終的に自由モナドのインスタンスとして表現できる
+ 2.自由モナドは合成可能である
+ 3.一般的なモナドとは異なり、モナド変換子を必要としない
+ https://github.com/koka-lang/koka/blob/23ada0ad/doc/spec/tour.kk.md
+
 */
 
 /**
@@ -476,4 +485,16 @@ pub fun example-ask-emit2()
   val handler2 = gen-emit-handler()  
   with handler1  
   with handler2
+  ask-emit()
+
+// emitエフェクトを除去するが、askエフェクトを使うハンドラ
+// (() -> <ask<a>,console,emit|e> b) -> <ask<a>,console|e> b
+val use-ask-emit-handler = handler
+  fun emit(msg)
+    val value = ask()
+    println("Emitted: " ++ msg ++ ", ask value: " ++ value)
+
+pub fun example-ask-emit3()
+  with ask-handler
+  with use-ask-emit-handler
   ask-emit()
