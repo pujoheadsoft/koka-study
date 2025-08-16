@@ -298,6 +298,7 @@ pub fun example-catch()
   safe-divide(1, 0)
 
 // 例外的なアクションを`maybe`型を返すものに変換する汎用ハンドラ
+// エフェクトの変換と考えられる
 fun raise-maybe(action : () -> <raise|e> a) : e maybe<a>
   with handler
     return(x)      Just(x)
@@ -498,3 +499,12 @@ pub fun example-ask-emit3()
   with ask-handler
   with use-ask-emit-handler
   ask-emit()
+
+fun transform(h : (() -> e a) -> e a) : <console|e> a
+  val x = h
+  with x
+  handler {
+    fun emit(msg) {
+      println("Emitted: " ++ msg)
+    }
+  }
