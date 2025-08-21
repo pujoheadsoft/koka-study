@@ -500,11 +500,3 @@ pub fun example-ask-emit3()
   with use-ask-emit-handler
   ask-emit()
 
-fun transform(h : (() -> e a) -> e a) : <console|e> a
-  val x = h
-  with x
-  handler {
-    fun emit(msg) {
-      println("Emitted: " ++ msg)
-    }
-  }
