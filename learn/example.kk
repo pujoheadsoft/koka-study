@@ -5,7 +5,8 @@ val ask-handler2 = handler
   ctl ask() resume("ask value")
 
 fun ask-handler(value : a, action : () -> <ask<a>|e> r) : e r
-  with ctl ask() resume(value)
+  with ctl ask()
+    resume(value)
   action()
 
 fun example-ask()
@@ -49,3 +50,28 @@ pub fun example-ask-emit()
   with ask-handler("Ask Value")
   with emit-handler()
   ask-emit()
+
+pub fun example-ask-emit3()
+  ask-handler("Ask Value", fn ()
+    emit-handler(fn ()
+      ask-emit()
+    )
+  )
+
+pub fun example-ask-emit4()
+  (handler {
+    ctl ask() 
+      resume("Ask Value")
+  }) fn () {
+    (handler {
+      ctl emit(message)
+        println("Emit " ++ message)
+        resume(())
+    }) fn () {
+      println("Start")
+      val v = ask()
+      emit(v)
+      println("End")
+    }
+  }
+
